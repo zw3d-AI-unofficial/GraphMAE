@@ -1,0 +1,52 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python Debugger: main_graph_240926",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "/home/wushuhui/project/GraphMAE-240926/main_graph_240926.py",
+            "console": "integratedTerminal",
+            "args": [ 
+                "--seed","0",
+                "--device","0",
+            ]
+        },
+        {
+            "name": "Python Debugger: main_graph",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "/home/wushuhui/project/GraphMAE-240926/main_graph.py",
+            "console": "integratedTerminal",
+            "args": [ 
+                "--dataset","IMDB-BINARY", //IMDB-BINARY, IMDB-MULTI, PROTEINS, MUTAG, NCI1, REDDIT-BINERY, COLLAB
+                "--encoder","gin",
+                "--decoder","gin",
+                "--seed","0",
+                "--device","0",
+            ]
+        },
+        
+        {
+            "name": "Python Debugger: main_transductive",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "/home/wushuhui/project/GraphMAE-240926/main_transductive.py",
+            "console": "integratedTerminal",
+            //"env": {
+            //    "CUDA_VISIBLE_DEVICES": "1"
+            //},
+            "args": [ // 参数，每个参数的参数值无论是否是数字都需用引号
+                "--dataset","cora", //cora, citeseer, pubmed, ogbn-arxiv
+                "--encoder","gat",
+                "--decoder","gat",
+                "--seed","0",
+                "--device","0",
+                "--logging",
+            ]
+        },        
+    ]
+}
