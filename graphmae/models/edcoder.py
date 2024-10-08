@@ -5,15 +5,10 @@ from functools import partial
 import torch
 import torch.nn as nn
 
-from .gin import GIN
-from .gat import GAT
-from .gcn import GCN
-from .dot_gat import DotGAT
-
 from .fe_encoder import FaceEncoder, EdgeEncoder
-from .uvnet_encoder import UVNetGraphEncoder
+from .uvnet import UVNetGraph
 
-from .loss_func import sce_loss,loss_grid
+from .loss_func import sce_loss
 from graphmae.utils import create_norm, drop_edge
 
 class Decoder(nn.Module):
@@ -34,7 +29,7 @@ class Decoder(nn.Module):
         )
     def forward(self, x):          # (Nv,256)
         x1 = x.view(-1, 256, 1, 1) # 将 (Nv, 256) 转换为 (Nv, 256, 1, 1) 
-        x1 = self.deconv(x1)       # 上采样
+        x1 = self.deconv(x1)       # 上采样 torch.Size([14, 7, 10, 10])
         x2 = self.mlp(x)           # (Nv,256) -> (Nv,7)
         return x1,x2
     
@@ -77,7 +72,16 @@ class PreModel(nn.Module):
             grid_feature_size = in_dim[1][0][0],
             geom_feature_size = in_dim[1][1][0]
         )
-        self.uvnet_encoder = UVNetGraphEncoder(
+        self.uvnet_encoder = UVNetGraph(
+            input_dim = 256,
+            input_edge_dim = 256,
+            output_dim = 256,
+            hidden_dim=64,
+            learn_eps=True,
+            num_layers=3,
+            num_mlp_layers=2,            
+        )
+        self.uvnet_decoder = UVNetGraph(
             input_dim = 256,
             input_edge_dim = 256,
             output_dim = 256,
@@ -101,8 +105,6 @@ class PreModel(nn.Module):
     def setup_loss_fn(self, loss_fn, alpha_l):
         if loss_fn == "mse":
             criterion = nn.MSELoss()
-        elif loss_fn == "test":
-            criterion = partial(loss_grid) 
         elif loss_fn == "sce":
             criterion = partial(sce_loss, alpha=alpha_l)  # 根据sce_loss创建一个新的函数，这个函数在调用时已经预设了alpha的值
         else:
@@ -115,7 +117,7 @@ class PreModel(nn.Module):
         perm = torch.randperm(num_nodes, device=x1.device) # perm 是一个随机排列的索引列表，用于后续选择掩码节点
 
         # random masking
-        num_mask_nodes = int(mask_rate * num_nodes)       # 2708*0.3=1354
+        num_mask_nodes = int(mask_rate * num_nodes)    
         mask_nodes = perm[: num_mask_nodes]               # mask的node索引
         keep_nodes = perm[num_mask_nodes: ]
 
@@ -172,7 +174,7 @@ class PreModel(nn.Module):
         V_emb, E_emb = self.uvnet_encoder(use_g,face_emb,edge_emb)              # GCN,(Nv,256),(Ne,256)
 
         V_emb[mask_nodes] = 0                                                    #remask
-        V_emb, E_emb = self.uvnet_encoder(use_g,V_emb,E_emb)                     # GCN Decoder,(Nv,256),(Ne,256)
+        V_emb, E_emb = self.uvnet_decoder(use_g,V_emb,E_emb)                     # GCN Decoder,(Nv,256),(Ne,256)
         grid_rec,geom_rec = self.decoder(V_emb)                                        # 重构为原始特征
 
         x1_init = grid_feat_v[mask_nodes]                                                # 原始节点特征中被掩码的部分
@@ -183,11 +185,7 @@ class PreModel(nn.Module):
 
         loss1 = self.criterion(x1_rec, x1_init)
         loss2 = self.criterion(x2_rec, x2_init)
-        return loss1+loss2                                                        # 返回重构误差 loss
-
-    def embed(self, g, x):
-        rep = self.encoder(g, x)
-        return rep
+        return loss1+loss2                                                     # 返回重构误差 loss
 
     @property
     def enc_params(self):

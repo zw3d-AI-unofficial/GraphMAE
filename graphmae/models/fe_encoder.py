@@ -19,20 +19,6 @@ class FaceEncoder(nn.Module):                                              # 传
             geom_feature_size = 7,
         ):
         super().__init__()
-        # 
-        # self.grid_features = []                             # grid_features网格属性相关的特征索引           [0,1,2,3,4,5,6]
-        # if "points" in input_features:
-        #     self.grid_features.extend([0, 1, 2])            
-        # if "normals" in input_features:
-        #     self.grid_features.extend([3, 4, 5])
-        # if "trimming_mask" in input_features:
-        #     self.grid_features.append(6)
-        # self.geom_features = []                             # geom_features几何属性相关的特征名称。          ["type"、"area"]
-        # self.geom_feature_size = 0                          # geom_features_size几何特征的总维度大小，不同属性维度大小不一样 7
-        # for feat, feat_size in JointGraphDataset.SURFACE_GEOM_FEAT_MAP.items():
-        #     if feat in input_features:
-        #         self.geom_features.append(feat)
-        #         self.geom_feature_size += feat_size
 
         # Calculate the total size of each feature list     # 根据 input_features 列表来确定哪些特征会被使用，并将它们映射到 self.grid_features 和 self.geom_features 中。
         self.grid_feature_size = grid_feature_size        # grid_features网格属性相关的特征索引大小        [0,1,2,3,4,5,6]
@@ -57,15 +43,6 @@ class FaceEncoder(nn.Module):                                              # 传
             # grid_feat = bg.ndata['uv'][:, :, :, self.grid_features].permute(0, 3, 1, 2)
             x += self.grid_embd(grid_feat_v)                                                                # (Nv,256)
         if self.geom_feature_size > 0:                                                                    # 存在几何特征,传递给 self.geom_embd
-            # geom_feat = []
-            # for feat in self.geom_features:
-            #     if feat == "type":
-            #         feat = F.one_hot(bg.ndata[feat], num_classes=JointGraphDataset.SURFACE_GEOM_FEAT_MAP["type"]) # 从输入数据中提取这些特征并进行适当的预处理（如 one-hot 编码）
-            #     else:
-            #         feat = bg.ndata[feat]
-            #         if len(feat.shape) == 1:
-            #             feat = feat.unsqueeze(1)
-            #     geom_feat.append(feat)
             x += self.geom_embd(geom_feat_v)
         x = x + self.mlp(self.ln(x))                                                                       # 将所有得到的特征向量相加，并通过多层感知器 self.mlp 和层归一化 self.ln
         return x   # 返回最终的编码向量 x
@@ -85,19 +62,7 @@ class EdgeEncoder(nn.Module):                              # 传入E/edge的grid
         super().__init__()
         # Calculate the total size of each feature list
         self.grid_feature_size = grid_feature_size             # grid_features网格属性相关的特征索引大小        [0,1,2,3,4,5]
-        self.geom_feature_size = geom_feature_size          # geom_features_size几何特征的总维度大小，不同属性维度大小不一样 5
-        # self.grid_features = []
-        # if "points" in input_features:
-        #     self.grid_features.extend([0, 1, 2])
-        # if "tangents" in input_features:
-        #     self.grid_features.extend([3, 4, 5])
-        # self.geom_features = []
-        # self.geom_feature_size = 0
-        # for feat, feat_size in JointGraphDataset.CURVE_GEOM_FEAT_MAP.items():
-        #     if feat in input_features:
-        #         self.geom_features.append(feat)
-        #         self.geom_feature_size += feat_size
-
+        self.geom_feature_size = geom_feature_size          # geom_features_size几何特征的总维度大小，不同属性维度大小不一样 
         # Setup the layers
         self.emb_dim = emb_dim
         if self.grid_feature_size > 0:
@@ -123,21 +88,10 @@ class EdgeEncoder(nn.Module):                              # 传入E/edge的grid
             # grid_feat = bg.edata['uv'][:, :, self.grid_features].permute(0, 2, 1)
             x += self.grid_embd(grid_feat_e) 
         if self.geom_feature_size > 0:
-            # geom_feat = []
-            # for feat in self.geom_features:
-            #     if feat == "type":
-            #         feat = F.one_hot(bg.edata[feat], num_classes=JointGraphDataset.CURVE_GEOM_FEAT_MAP["type"])
-            #     else:
-            #         feat = bg.edata[feat]
-            #         if len(feat.shape) == 1:
-            #             feat = feat.unsqueeze(1)
-            #     geom_feat.append(feat)
             x += self.geom_embd(geom_feat_e)
         x = x + self.mlp(self.ln(x))
         return x                                     #(edges,256)
     
-
-
 
 
 

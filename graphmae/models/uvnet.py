@@ -5,7 +5,7 @@ from dgl.nn.pytorch.conv import NNConv
 from dgl.nn.pytorch.glob import MaxPooling
 
 
-class UVNetGraphEncoder(nn.Module):
+class UVNetGraph(nn.Module):
     def __init__(
         self,
         input_dim,
@@ -29,7 +29,7 @@ class UVNetGraphEncoder(nn.Module):
             num_layers (int, optional): [description]. Defaults to 3.
             num_mlp_layers (int, optional): [description]. Defaults to 2.
         """
-        super(UVNetGraphEncoder, self).__init__()
+        super(UVNetGraph, self).__init__()
         self.num_layers = num_layers
         self.learn_eps = learn_eps
 

@@ -187,8 +187,8 @@ def main(args):
             logging.info("Saveing Model ...")
             torch.save(model.state_dict(), "checkpoint.pt")
         
-        model = model.to(device)
-        model.eval()
+        # model = model.to(device)
+        # model.eval()
         # test_f1 = graph_classification_evaluation(model, pooler, eval_loader, num_classes, lr_f, weight_decay_f, max_epoch_f, device, mute=False)            #分类
         # acc_list.append(test_f1)
 

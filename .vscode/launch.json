@@ -15,38 +15,6 @@
                 "--device","0",
             ]
         },
-        {
-            "name": "Python Debugger: main_graph",
-            "type": "debugpy",
-            "request": "launch",
-            "program": "/home/wushuhui/project/GraphMAE-240926/main_graph.py",
-            "console": "integratedTerminal",
-            "args": [ 
-                "--dataset","IMDB-BINARY", //IMDB-BINARY, IMDB-MULTI, PROTEINS, MUTAG, NCI1, REDDIT-BINERY, COLLAB
-                "--encoder","gin",
-                "--decoder","gin",
-                "--seed","0",
-                "--device","0",
-            ]
-        },
-        
-        {
-            "name": "Python Debugger: main_transductive",
-            "type": "debugpy",
-            "request": "launch",
-            "program": "/home/wushuhui/project/GraphMAE-240926/main_transductive.py",
-            "console": "integratedTerminal",
-            //"env": {
-            //    "CUDA_VISIBLE_DEVICES": "1"
-            //},
-            "args": [ // 参数，每个参数的参数值无论是否是数字都需用引号
-                "--dataset","cora", //cora, citeseer, pubmed, ogbn-arxiv
-                "--encoder","gat",
-                "--decoder","gat",
-                "--seed","0",
-                "--device","0",
-                "--logging",
-            ]
-        },        
+      
     ]
 }
