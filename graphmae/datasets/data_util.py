@@ -47,8 +47,9 @@ def scale_feats(x):
     feats = torch.from_numpy(scaler.transform(feats)).float()
     return feats
 
-def load_graph_dataset(dataset_name, deg4feat=False): #deg4feat：是否使用节点的度数作为特征
-    folder_path = "/home/share/brep/abc/new_graph"
+def load_graph_dataset(): 
+    folder_path = "/home/share/brep/fusion/joint/graph"
+    # folder_path = "/home/share/brep/abc/new_graph"
     dataset = []
     i = 0
     for file_name in os.listdir(folder_path):
@@ -58,7 +59,7 @@ def load_graph_dataset(dataset_name, deg4feat=False): #deg4feat：是否使用�
             dataset.append(graph)   
 
             i+=1
-       # if i>3000:
+        if i > 3000:
             break             
 
     new_dataset = []
@@ -71,6 +72,7 @@ def load_graph_dataset(dataset_name, deg4feat=False): #deg4feat：是否使用�
             continue
         graph = renew_face_feature(graph)
         graph = renew_edge_feature(graph)
+        graph = center_and_scale_graph(graph)
         # 将修改后的图和标签添加到新的列表中
         new_dataset.append((graph, label))
     dataset = list(map(tuple, new_dataset))
@@ -187,3 +189,43 @@ def renew_edge_feature(g):
 
     return graph
 
+
+# bounding_box中心化和缩放处理(-1,1)
+def center_and_scale_graph(graph):
+    graph.ndata['grid'] = graph.ndata['grid'].permute(0, 2, 3, 1)         #torch.Size([nodes,7,10,10])->[nodes,10,10,7]
+    graph.edata['grid'] = graph.edata['grid'].permute(0, 2, 1)            #torch.Size([nodes,6,10])->[nodes,10,6]
+
+    graph.ndata["grid"], center, scale = center_and_scale_uvgrid(     #torch.Size([nodes,10,10,7])
+        graph.ndata["grid"], return_center_scale=True
+    )
+    graph.edata["grid"][..., :3] -= center                            # 对edata中的坐标进行相同的中心化和缩放
+    graph.edata["grid"][..., :3] *= scale
+
+    graph.ndata['grid'] = graph.ndata['grid'].permute(0, 3, 1, 2)         #torch.Size([nodes,10,10,7])->[nodes,7,10,10]
+    graph.edata['grid'] = graph.edata['grid'].permute(0, 2, 1)            #torch.Size([nodes,10,6])->[nodes,6,10]
+    return graph
+
+def center_and_scale_uvgrid(inp: torch.Tensor, return_center_scale=False):  #torch.Size([nodes, 10,10,7])
+    bbox = bounding_box_uvgrid(inp)                    # box: torch.Size([2, 3])
+    diag = bbox[1] - bbox[0]
+    scale = 2.0 / max(diag[0], diag[1], diag[2])       # 最大的边归一化到长度为2
+    center = 0.5 * (bbox[0] + bbox[1])                 # box的中心
+    inp[..., :3] -= center                             # 坐标点中心化和缩放
+    inp[..., :3] *= scale
+    if return_center_scale:
+        return inp, center, scale
+    return inp
+
+def bounding_box_uvgrid(inp: torch.Tensor):
+    pts = inp[..., :3].reshape((-1, 3))       # torch.Size([nodes, 10, 10, 7]) -> ([nodes, 10, 10, 3]) -> torch.Size([nodes*10*10, 3]) 取0,1,2列
+    mask = inp[..., 6].reshape(-1)            # torch.Size([nodes*10*10])
+    point_indices_inside_faces = mask == 1    # torch.Size([nodes*10*10])
+    pts = pts[point_indices_inside_faces, :]  # mask为0的nodes就不要了 
+    return bounding_box_pointcloud(pts)
+
+def bounding_box_pointcloud(pts: torch.Tensor):
+    x = pts[:, 0]
+    y = pts[:, 1]
+    z = pts[:, 2]
+    box = [[x.min(), y.min(), z.min()], [x.max(), y.max(), z.max()]]
+    return torch.tensor(box)

@@ -20,7 +20,8 @@ class Decoder(nn.Module):
             nn.ConvTranspose2d(in_channels=128, out_channels=64, kernel_size=4, stride=1, padding=1),   # 输出大小: Nv x 64 x 5 x 5
             nn.ReLU(),
             nn.ConvTranspose2d(in_channels=64, out_channels=7, kernel_size=4, stride=2, padding=1),     # 输出大小: Nv x 7 x 10 x 10
-            nn.Sigmoid()  # 输出范围在[0, 1] 7*10*10
+            # nn.Sigmoid()  # 输出范围在[0, 1] 7*10*10
+            nn.Tanh()  # [-1, 1]
         )
         self.mlp = nn.Sequential(
             nn.Linear(256, 128),
@@ -73,6 +74,15 @@ class PreModel(nn.Module):
             geom_feature_size = in_dim[1][1][0]
         )
         self.uvnet_encoder = UVNetGraph(
+            input_dim = 256,
+            input_edge_dim = 256,
+            output_dim = 256,
+            hidden_dim=64,
+            learn_eps=True,
+            num_layers=3,
+            num_mlp_layers=2,            
+        )
+        self.uvnet_decoder = UVNetGraph(
             input_dim = 256,
             input_edge_dim = 256,
             output_dim = 256,
@@ -177,10 +187,10 @@ class PreModel(nn.Module):
         V_emb, E_emb = self.uvnet_decoder(use_g,V_emb,E_emb)                     # GCN Decoder,(Nv,256),(Ne,256)
         grid_rec,geom_rec = self.decoder(V_emb)                                        # 重构为原始特征
 
-        x1_init = grid_feat_v[mask_nodes]                                                # 原始节点特征中被掩码的部分
-        x2_init = geom_feat_v[mask_nodes]                                                # 原始节点特征中被掩码的部分
+        x1_init = grid_feat_v[mask_nodes].permute(0, 2, 3, 1)                     # 原始节点特征中被掩码的部分
+        x2_init = geom_feat_v[mask_nodes]                                         # 原始节点特征中被掩码的部分
 
-        x1_rec = grid_rec[mask_nodes]                                             # 重构后的节点特征中对应掩码部分的特征
+        x1_rec = grid_rec[mask_nodes].permute(0, 2, 3, 1)                         # 重构后的节点特征中对应掩码部分的特征
         x2_rec = geom_rec[mask_nodes]                                             # 重构后的节点特征中对应掩码部分的特征
 
         loss1 = self.criterion(x1_rec, x1_init)
