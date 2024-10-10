@@ -48,7 +48,7 @@ def scale_feats(x):
     return feats
 
 def load_graph_dataset(dataset_name, deg4feat=False): #deg4feat：是否使用节点的度数作为特征
-    folder_path = "/home/share/brep/abc/new_graph"
+    folder_path = "/home/share/brep/fusion/joint/graph"
     dataset = []
     i = 0
     for file_name in os.listdir(folder_path):
@@ -58,7 +58,7 @@ def load_graph_dataset(dataset_name, deg4feat=False): #deg4feat：是否使用�
             dataset.append(graph)   
 
             i+=1
-       # if i>3000:
+        if i > 3000:
             break             
 
     new_dataset = []

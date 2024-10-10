@@ -8,11 +8,13 @@
             "name": "Python Debugger: main_graph_240926",
             "type": "debugpy",
             "request": "launch",
-            "program": "/home/wushuhui/project/GraphMAE-240926/main_graph_240926.py",
+            "program": "/home/fusiqiao/Projects/GraphMAE/main_graph_240926.py",
             "console": "integratedTerminal",
             "args": [ 
                 "--seed","0",
                 "--device","0",
+                "--max_epoch","50",
+                "--lr", "1e-4"
             ]
         },
         {

@@ -9,7 +9,7 @@ from dgl.dataloading import GraphDataLoader
 import torch
 from torch.utils.data.sampler import SubsetRandomSampler
 
-from sklearn.model_selection import StratifiedKFold, GridSearchCV
+# from sklearn.model_selection import StratifiedKFold, GridSearchCV
 from sklearn.svm import SVC
 from sklearn.metrics import f1_score
 
@@ -25,47 +25,47 @@ from graphmae.datasets.data_util import load_graph_dataset
 from graphmae.models import build_model
 
 
-def graph_classification_evaluation(model, pooler, dataloader, num_classes, lr_f, weight_decay_f, max_epoch_f, device, mute=False):
-    model.eval()
-    x_list = []
-    y_list = []
-    with torch.no_grad():
-        for i, (batch_g, labels) in enumerate(dataloader):
-            batch_g = batch_g.to(device)
-            feat = batch_g.ndata["attr"]
-            out = model.embed(batch_g, feat)
-            out = pooler(batch_g, out)
+# def graph_classification_evaluation(model, pooler, dataloader, num_classes, lr_f, weight_decay_f, max_epoch_f, device, mute=False):
+#     model.eval()
+#     x_list = []
+#     y_list = []
+#     with torch.no_grad():
+#         for i, (batch_g, labels) in enumerate(dataloader):
+#             batch_g = batch_g.to(device)
+#             feat = batch_g.ndata["attr"]
+#             out = model.embed(batch_g, feat)
+#             out = pooler(batch_g, out)
 
-            y_list.append(labels.numpy())
-            x_list.append(out.cpu().numpy())
-    x = np.concatenate(x_list, axis=0)
-    y = np.concatenate(y_list, axis=0)
-    test_f1, test_std = evaluate_graph_embeddings_using_svm(x, y)
-    print(f"#Test_f1: {test_f1:.4f}±{test_std:.4f}")
-    return test_f1
+#             y_list.append(labels.numpy())
+#             x_list.append(out.cpu().numpy())
+#     x = np.concatenate(x_list, axis=0)
+#     y = np.concatenate(y_list, axis=0)
+#     test_f1, test_std = evaluate_graph_embeddings_using_svm(x, y)
+#     print(f"#Test_f1: {test_f1:.4f}±{test_std:.4f}")
+#     return test_f1
 
 
-def evaluate_graph_embeddings_using_svm(embeddings, labels):
-    result = []
-    kf = StratifiedKFold(n_splits=10, shuffle=True, random_state=0)
+# def evaluate_graph_embeddings_using_svm(embeddings, labels):
+#     result = []
+#     kf = StratifiedKFold(n_splits=10, shuffle=True, random_state=0)
 
-    for train_index, test_index in kf.split(embeddings, labels):
-        x_train = embeddings[train_index]
-        x_test = embeddings[test_index]
-        y_train = labels[train_index]
-        y_test = labels[test_index]
-        params = {"C": [1e-3, 1e-2, 1e-1, 1, 10]}
-        svc = SVC(random_state=42)
-        clf = GridSearchCV(svc, params)
-        clf.fit(x_train, y_train)
+#     for train_index, test_index in kf.split(embeddings, labels):
+#         x_train = embeddings[train_index]
+#         x_test = embeddings[test_index]
+#         y_train = labels[train_index]
+#         y_test = labels[test_index]
+#         params = {"C": [1e-3, 1e-2, 1e-1, 1, 10]}
+#         svc = SVC(random_state=42)
+#         clf = GridSearchCV(svc, params)
+#         clf.fit(x_train, y_train)
 
-        preds = clf.predict(x_test)
-        f1 = f1_score(y_test, preds, average="micro")
-        result.append(f1)
-    test_f1 = np.mean(result)
-    test_std = np.std(result)
+#         preds = clf.predict(x_test)
+#         f1 = f1_score(y_test, preds, average="micro")
+#         result.append(f1)
+#     test_f1 = np.mean(result)
+#     test_std = np.std(result)
 
-    return test_f1, test_std
+#     return test_f1, test_std
 
 
 def pretrain(model, pooler, dataloaders, optimizer, max_epoch, device, scheduler, num_classes, lr_f, weight_decay_f, max_epoch_f, linear_prob=True, logger=None):
@@ -80,7 +80,7 @@ def pretrain(model, pooler, dataloaders, optimizer, max_epoch, device, scheduler
             batch_g = batch_g.to(device)
          
             model.train()
-            loss, loss_dict = model(batch_g) #batch_g Graph(num_nodes=570, num_edges=9642,    feat torch.Size([570, 271])     
+            loss, loss_dict = model(batch_g) #batch_g Graph(num_nodes=570, num_edges=9642,    feat torch.Size([570, 271])
             
             optimizer.zero_grad()
             loss.backward()
