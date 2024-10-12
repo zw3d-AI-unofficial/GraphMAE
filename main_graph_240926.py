@@ -73,6 +73,7 @@ def pretrain(model, pooler, dataloaders, optimizer, max_epoch, device, scheduler
 
     epoch_iter = tqdm(range(max_epoch))
     for epoch in epoch_iter:
+        torch.cuda.empty_cache()                  # 释放显存
         model.train()
         loss_list = []
         for batch in train_loader:                #[Graph(num_nodes=647, num_edges=11287,
@@ -93,6 +94,7 @@ def pretrain(model, pooler, dataloaders, optimizer, max_epoch, device, scheduler
         if scheduler is not None:
             scheduler.step()
         epoch_iter.set_description(f"Epoch {epoch} | train_loss: {np.mean(loss_list):.4f}") #多个batch的loss的均值即当前epoch的loss
+        print(loss)
 
     return model
 

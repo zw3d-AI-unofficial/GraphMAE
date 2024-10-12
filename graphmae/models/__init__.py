@@ -27,12 +27,12 @@ def build_model(args):
 
     model = PreModel(
         in_dim=num_features,
-        num_hidden=num_hidden,
+        # num_hidden=num_hidden,
         mask_rate=mask_rate,
         loss_fn=loss_fn,
         drop_edge_rate=drop_edge_rate,
         replace_rate=replace_rate,
         alpha_l=alpha_l,
-        concat_hidden=concat_hidden,
+        # concat_hidden=concat_hidden,
     )
     return model

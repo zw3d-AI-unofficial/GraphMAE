@@ -12,24 +12,31 @@ from .loss_func import sce_loss
 from graphmae.utils import create_norm, drop_edge
 
 class Decoder(nn.Module):
-    def __init__(self):
+    def __init__(
+            self,
+            input_dim: int, 
+            hidden_dim_1:int,
+            hidden_dim_2:int,
+            out_dim:int,
+        ):
         super(Decoder, self).__init__()
+        self.input_dim = input_dim
         self.deconv = nn.Sequential( 
-            nn.ConvTranspose2d(in_channels=256, out_channels=128, kernel_size=4, stride=1, padding=0),  # (Nv, 256, 1, 1) 输出大小: Nv x 128 x 4 x 4
+            nn.ConvTranspose2d(in_channels=input_dim, out_channels=hidden_dim_1, kernel_size=4, stride=1, padding=0),  # (Nv, 256, 1, 1) 输出大小: Nv x 128 x 4 x 4
             nn.ReLU(),
-            nn.ConvTranspose2d(in_channels=128, out_channels=64, kernel_size=4, stride=1, padding=1),   # 输出大小: Nv x 64 x 5 x 5
+            nn.ConvTranspose2d(in_channels=hidden_dim_1, out_channels=hidden_dim_2, kernel_size=4, stride=1, padding=1),   # 输出大小: Nv x 64 x 5 x 5
             nn.ReLU(),
-            nn.ConvTranspose2d(in_channels=64, out_channels=7, kernel_size=4, stride=2, padding=1),     # 输出大小: Nv x 7 x 10 x 10
+            nn.ConvTranspose2d(in_channels=hidden_dim_2, out_channels=out_dim, kernel_size=4, stride=2, padding=1),     # 输出大小: Nv x 7 x 10 x 10
             # nn.Sigmoid()  # 输出范围在[0, 1] 7*10*10
             nn.Tanh()  # [-1, 1]
         )
         self.mlp = nn.Sequential(
-            nn.Linear(256, 128),
+            nn.Linear(input_dim, hidden_dim_1),
             nn.ReLU(),
-            nn.Linear(128, 7),
+            nn.Linear(hidden_dim_1, out_dim),
         )
     def forward(self, x):          # (Nv,256)
-        x1 = x.view(-1, 256, 1, 1) # 将 (Nv, 256) 转换为 (Nv, 256, 1, 1) 
+        x1 = x.view(-1, self.input_dim, 1, 1) # 将 (Nv, 256) 转换为 (Nv, 256, 1, 1) 
         x1 = self.deconv(x1)       # 上采样 torch.Size([14, 7, 10, 10])
         x2 = self.mlp(x)           # (Nv,256) -> (Nv,7)
         return x1,x2
@@ -38,20 +45,20 @@ class PreModel(nn.Module):
     def __init__(
             self,
             in_dim: tuple,              #((grid_feat_v_dim, geom_feat_v_dim),(grid_feat_e_dim,geom_feat_e_dim))
-            num_hidden: int,
+#            num_hidden: int,
             mask_rate: float = 0.3,
-            loss_fn: str = "test",         #修改/sce
+            loss_fn: str = "sce",         #修改/sce
             drop_edge_rate: float = 0.0,
             replace_rate: float = 0.1,
             alpha_l: float = 2,
-            concat_hidden: bool = False,
+#            concat_hidden: bool = False,
          ):
         super(PreModel, self).__init__()
         self._mask_rate = mask_rate
 
         self._drop_edge_rate = drop_edge_rate
-        self._output_hidden_size = num_hidden #256
-        self._concat_hidden = concat_hidden
+        # self._output_hidden_size = num_hidden #256
+        # self._concat_hidden = concat_hidden
         
         self._replace_rate = replace_rate
         self._mask_token_rate = 1 - self._replace_rate
@@ -59,7 +66,7 @@ class PreModel(nn.Module):
 
         self.face_encoder = FaceEncoder(
             # input_features=["type","area","length","points","normals","tangents","trimming_mask"],
-            emb_dim=256,                                    # 嵌入维度大小，默认值是 384
+            emb_dim=512,                                    # 输出的emb维度
             bias=False,
             dropout=0.0,
             grid_feature_size = in_dim[0][0][0],
@@ -67,40 +74,36 @@ class PreModel(nn.Module):
         )
         self.edge_encoder = EdgeEncoder(
             # input_features=["type","area","length","points","normals","tangents","trimming_mask"],
-            emb_dim=256,
+            emb_dim=512,
             bias=False,
             dropout=0.0,
             grid_feature_size = in_dim[1][0][0],
             geom_feature_size = in_dim[1][1][0]
         )
         self.uvnet_encoder = UVNetGraph(
-            input_dim = 256,
-            input_edge_dim = 256,
-            output_dim = 256,
-            hidden_dim=64,
+            input_dim = 512,
+            input_edge_dim = 512,
+            output_dim = 512,
+            hidden_dim=128,
             learn_eps=True,
             num_layers=3,
             num_mlp_layers=2,            
         )
         self.uvnet_decoder = UVNetGraph(
-            input_dim = 256,
-            input_edge_dim = 256,
-            output_dim = 256,
-            hidden_dim=64,
+            input_dim = 512,
+            input_edge_dim = 512,
+            output_dim = 512,
+            hidden_dim=128,
             learn_eps=True,
             num_layers=3,
             num_mlp_layers=2,            
         )
-        self.uvnet_decoder = UVNetGraph(
-            input_dim = 256,
-            input_edge_dim = 256,
-            output_dim = 256,
-            hidden_dim=64,
-            learn_eps=True,
-            num_layers=3,
-            num_mlp_layers=2,            
+        self.decoder = Decoder(
+            input_dim = 512, 
+            hidden_dim_1 = 256,
+            hidden_dim_2 = 128,
+            out_dim = 7,            
         )
-        self.decoder = Decoder()
 
         self.enc_mask_token_grid = nn.Parameter(torch.zeros(1, *in_dim[0][0]))     #grid_feat_v_dim
         self.enc_mask_token_geom = nn.Parameter(torch.zeros(1, *in_dim[0][1]))     #geom_feat_v_dim
@@ -108,9 +111,9 @@ class PreModel(nn.Module):
         # * setup loss function
         self.criterion = self.setup_loss_fn(loss_fn, alpha_l)
 
-    @property
-    def output_hidden_dim(self):
-        return self._output_hidden_size
+    # @property
+    # def output_hidden_dim(self):
+    #     return self._output_hidden_size
 
     def setup_loss_fn(self, loss_fn, alpha_l):
         if loss_fn == "mse":
@@ -187,7 +190,7 @@ class PreModel(nn.Module):
         V_emb, E_emb = self.uvnet_decoder(use_g,V_emb,E_emb)                     # GCN Decoder,(Nv,256),(Ne,256)
         grid_rec,geom_rec = self.decoder(V_emb)                                        # 重构为原始特征
 
-        x1_init = grid_feat_v[mask_nodes].permute(0, 2, 3, 1)                     # 原始节点特征中被掩码的部分
+        x1_init = grid_feat_v[mask_nodes].permute(0, 2, 3, 1)                     # 原始节点特征中被掩码的部分 7*10*10->10*10*7
         x2_init = geom_feat_v[mask_nodes]                                         # 原始节点特征中被掩码的部分
 
         x1_rec = grid_rec[mask_nodes].permute(0, 2, 3, 1)                         # 重构后的节点特征中对应掩码部分的特征
@@ -197,12 +200,12 @@ class PreModel(nn.Module):
         loss2 = self.criterion(x2_rec, x2_init)
         return loss1+loss2                                                     # 返回重构误差 loss
 
-    @property
-    def enc_params(self):
-        return self.encoder.parameters()
+    # @property
+    # def enc_params(self):
+    #     return self.encoder.parameters()
     
-    @property
-    def dec_params(self):
-        return chain(*[self.encoder_to_decoder.parameters(), self.decoder.parameters()]) #返回的是一个合并了 encoder_to_decoder 和 decoder 部分所有参数的迭代器
+    # @property
+    # def dec_params(self):
+    #     return chain(*[self.encoder_to_decoder.parameters(), self.decoder.parameters()]) #返回的是一个合并了 encoder_to_decoder 和 decoder 部分所有参数的迭代器
     
 
